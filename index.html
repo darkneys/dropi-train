@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тренажёр дробей</title>
+<style>
+:root{--bg:#fff;--fg:#1d1d1f;--mut:#6b6b70;--card:#f3f3f6;--bd:#d6d6dc;--ac:#2b59c3;--acfg:#fff;--ok:#1a7f37;--bad:#c62828;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181b;--fg:#ececf0;--mut:#9a9aa3;--card:#232529;--bd:#3a3c42;--ac:#6c92f0;--acfg:#101114;--ok:#5fd088;--bad:#ff7b7b}}
+:root[data-theme="dark"]{--bg:#17181b;--fg:#ececf0;--mut:#9a9aa3;--card:#232529;--bd:#3a3c42;--ac:#6c92f0;--acfg:#101114;--ok:#5fd088;--bad:#ff7b7b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+[hidden]{display:none!important}
+h1{font-size:24px;margin:8px 0 6px}
+h2{font-size:14px;margin:20px 0 8px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.mut{color:var(--mut)}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button,.row button{font:inherit;padding:10px 14px;border-radius:12px;border:1.5px solid var(--bd);background:var(--card);color:var(--fg)}
+.seg button.on{border-color:var(--ac);background:var(--ac);color:var(--acfg)}
+button.main{background:var(--ac);color:var(--acfg);border-color:var(--ac);font-weight:600}
+#go{width:100%;margin-top:26px;padding:14px;font:inherit;font-weight:600;border-radius:12px;border:0;background:var(--ac);color:var(--acfg)}
+.bar{display:flex;justify-content:space-between;gap:8px;color:var(--mut);font-size:15px;flex-wrap:wrap}
+.expr{margin:18px 0;padding:18px 14px;background:var(--card);border-radius:14px;font-size:21px;line-height:2.4;overflow-x:auto}
+.expr>*{vertical-align:middle}
+.op{margin:0 .3em}
+.br{font-size:1.35em;margin:0 1px}
+.fr{display:inline-flex;flex-direction:column;align-items:center;margin:0 2px;font-size:.78em;line-height:1.15}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 3px}
+.mx{display:inline-flex;align-items:center;gap:1px}
+#ans{width:100%;font:inherit;font-size:20px;padding:12px;border-radius:12px;border:1.5px solid var(--bd);background:var(--bg);color:var(--fg)}
+#msg{min-height:28px;margin:8px 0;font-weight:600}
+.good{color:var(--ok)}.bad{color:var(--bad)}
+.row{display:flex;gap:10px}.row button{flex:1;padding:13px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.stat{background:var(--card);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:22px}
+.it{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--bd);font-size:15px}
+.it b{width:1.6em}
+</style>
+</head>
+<body>
+<main>
+<section id="setup">
+<h1>Тренажёр дробей</h1>
+<p class="mut">Случайные примеры в стиле учебника: обыкновенные, десятичные и смешанные числа, скобки. Ответ можно вводить так: 7/12, 2 1/3 или 1,5.</p>
+<h2>Сложность</h2>
+<div class="seg" data-k="lv"><button data-v="0">Лёгкая</button><button data-v="1" class="on">Средняя</button><button data-v="2">Сложная</button></div>
+<h2>Количество примеров</h2>
+<div class="seg" data-k="cnt"><button data-v="5">5</button><button data-v="10" class="on">10</button><button data-v="15">15</button></div>
+<h2>Время на всё</h2>
+<div class="seg" data-k="lim"><button data-v="0" class="on">Без лимита</button><button data-v="5">5 мин</button><button data-v="10">10 мин</button><button data-v="20">20 мин</button></div>
+<button id="go">Начать</button>
+</section>
+
+<section id="play" hidden>
+<div class="bar"><span id="prog"></span><span id="clock"></span></div>
+<div class="bar"><span>На этом примере: <span id="pt">0:00</span></span></div>
+<div id="expr" class="expr"></div>
+<input id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ответ">
+<div id="msg"></div>
+<div class="row"><button id="chk" class="main">Проверить</button><button id="skp">Пропустить</button></div>
+</section>
+
+<section id="res" hidden>
+<h1>Готово</h1>
+<div class="stats" id="stats"></div>
+<div id="list"></div>
+<button id="again" class="main" style="width:100%;margin-top:22px;padding:14px;font:inherit;font-weight:600;border-radius:12px;border:0">Ещё раз</button>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a};
+const mk=(n,d=1)=>{if(d<0){n=-n;d=-d}const g=gcd(n,d)||1;return{n:n/g,d:d/g}};
+const add=(a,b)=>mk(a.n*b.d+b.n*a.d,a.d*b.d);
+const sub=(a,b)=>mk(a.n*b.d-b.n*a.d,a.d*b.d);
+const mul=(a,b)=>mk(a.n*b.n,a.d*b.d);
+const dv=(a,b)=>b.n===0?null:mk(a.n*b.d,a.d*b.n);
+const big=v=>Math.abs(v.n)>20000||v.d>2000;
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[rnd(0,a.length-1)];
+const DEC=['0,2','0,25','0,4','0,5','0,6','0,75','0,8','0,9','1,25','1,5','1,6','2,4','2,5','3,2','3,6','4,5','0,125','1,125','1,45','0,45','2,56','8,96','0,1','0,05','1,4','1,28','0,198'];
+const decR=s=>{const[i,f='']=s.split(',');return mk(parseInt(i+f,10),10**f.length)};
+const FAMS=[[2,4,5,8,10,20,25],[3,6,9,12,2,4],[2,3,4,6,8,12],[5,10,15,3,6],[2,3,4,5,6,8,9,11,12]];
+const frH=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+
+function leaf(fam,lv){
+  const r=Math.random(),pd=lv===0?0.4:0.3,pf=0.3;
+  if(r<pd){const s=pick(DEC);return{leaf:1,v:decR(s),h:`<span>${s}</span>`}}
+  const d=pick(fam);let n=rnd(1,d-1);while(gcd(n,d)!==1)n=rnd(1,d-1);
+  if(r<pd+pf)return{leaf:1,v:mk(n,d),h:frH(n,d)};
+  const w=rnd(1,lv===0?3:6);
+  return{leaf:1,v:mk(w*d+n,d),h:`<span class="mx"><span>${w}</span>${frH(n,d)}</span>`};
+}
+function build(n,fam,lv){
+  if(n===1)return leaf(fam,lv);
+  const k=rnd(1,n-1),l=build(k,fam,lv),r=build(n-k,fam,lv);
+  if(!l||!r)return null;
+  const op=pick(['+','−','·',':','·',':','+','−']);
+  const v=op==='+'?add(l.v,r.v):op==='−'?sub(l.v,r.v):op==='·'?mul(l.v,r.v):dv(l.v,r.v);
+  if(!v||v.n<=0||big(v))return null;
+  return{op,l,r,v};
+}
+function rd(x){
+  if(x.leaf)return{h:x.h,p:3,d:0};
+  const P=(x.op==='+'||x.op==='−')?1:2,L=rd(x.l),R=rd(x.r);
+  const wl=!x.l.leaf&&L.p<P;
+  const wr=!x.r.leaf&&(R.p<P||(R.p===P&&(x.op==='−'||x.op===':')));
+  const w=(o,f)=>f?`<span class="br">${o.d%2?'[':'('}</span>${o.h}<span class="br">${o.d%2?']':')'}</span>`:o.h;
+  return{h:w(L,wl)+`<span class="op">${x.op}</span>`+w(R,wr),p:P,d:Math.max(L.d+(wl?1:0),R.d+(wr?1:0))};
+}
+const LV=[[3,3,6],[4,5,12],[5,7,24]];
+function gen(lv){
+  let[a,b,lim]=LV[lv];
+  for(let t=0;t<60000;t++){
+    if(t===20000||t===40000)lim*=2;
+    const e=build(rnd(a,b),pick(FAMS),lv);
+    if(!e||e.v.d>lim||e.v.n>400)continue;
+    const r=rd(e);
+    if(lv>0&&r.d<1)continue;
+    return{h:r.h,v:e.v,att:0,st:'none',t:0};
+  }
+  return lv>0?gen(lv-1):null;
+}
+function af(v){
+  if(v.d===1)return String(v.n);
+  const w=Math.floor(v.n/v.d),r=v.n-w*v.d,mixed=w?`${w} ${r}/${v.d}`:`${r}/${v.d}`;
+  let d=v.d;while(d%2===0)d/=2;while(d%5===0)d/=5;
+  if(d===1)return(+(v.n/v.d).toFixed(6)).toString().replace('.',',')+' = '+mixed;
+  return mixed;
+}
+function parse(s){
+  s=s.trim().replace(/,/g,'.').replace(/\s+/g,' ');let m;
+  if(m=s.match(/^(-?\d+)$/))return mk(+m[1]);
+  if(m=s.match(/^(-?)(\d*)\.(\d+)$/)){const f=m[3];return mk((m[1]?-1:1)*parseInt((m[2]||'0')+f,10),10**f.length)}
+  if(m=s.match(/^(-?\d+)\/(\d+)$/))return +m[2]?mk(+m[1],+m[2]):null;
+  if(m=s.match(/^(-?)(\d+) (\d+)\/(\d+)$/)){const d=+m[4];if(!d)return null;const n=(+m[2])*d+(+m[3]);return mk(m[1]?-n:n,d)}
+  return null;
+}
+const tf=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+
+const S={lv:1,cnt:10,lim:0};let run=null;
+document.querySelectorAll('.seg').forEach(g=>g.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  g.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S[g.dataset.k]=+b.dataset.v;
+}));
+function screen(id){['setup','play','res'].forEach(x=>$('#'+x).hidden=x!==id)}
+function msg(t,c){const m=$('#msg');m.textContent=t;m.className=c||''}
+
+$('#go').onclick=()=>{
+  const items=[];for(let i=0;i<S.cnt;i++)items.push(gen(S.lv));
+  run={items,n:S.cnt,i:0,lim:S.lim,t0:Date.now(),ps:Date.now(),wait:false,lock:false};
+  screen('play');show();
+  run.tm=setInterval(tick,250);tick();
+};
+function show(){
+  const p=run.items[run.i];
+  $('#expr').innerHTML=p.h+'<span class="op">=</span>';
+  $('#prog').textContent=`Пример ${run.i+1} из ${run.n}`;
+  $('#ans').value='';$('#ans').disabled=false;$('#chk').textContent='Проверить';
+  msg('');run.ps=Date.now();run.wait=false;run.lock=false;
+  setTimeout(()=>$('#ans').focus(),50);
+}
+function tick(){
+  if(!run)return;
+  const e=Date.now()-run.t0;
+  $('#clock').textContent=run.lim?'Осталось '+tf(Math.max(0,run.lim*60000-e)):'Время '+tf(e);
+  $('#pt').textContent=tf(Date.now()-run.ps);
+  if(run.lim&&e>=run.lim*60000)end();
+}
+function next(){run.i++;run.i>=run.n?end():show()}
+function check(){
+  if(run.lock)return;
+  if(run.wait){next();return}
+  const v=parse($('#ans').value),p=run.items[run.i];
+  if(!v){msg('Не удалось прочитать ответ. Примеры: 7/12, 2 1/3, 1,5','bad');return}
+  p.att++;
+  if(v.n===p.v.n&&v.d===p.v.d){
+    p.st='ok';p.t=Date.now()-run.ps;run.lock=true;msg('Верно!','good');
+    setTimeout(next,600);
+  }else msg('Неверно, попробуй ещё раз','bad');
+}
+$('#chk').onclick=check;
+$('#ans').addEventListener('keydown',e=>{if(e.key==='Enter')check()});
+$('#skp').onclick=()=>{
+  if(run.lock||run.wait)return;
+  const p=run.items[run.i];p.st='skip';p.t=Date.now()-run.ps;
+  run.wait=true;$('#ans').disabled=true;$('#chk').textContent='Дальше';
+  msg('Ответ: '+af(p.v),'bad');
+};
+function end(){
+  if(!run||run.done)return;run.done=true;clearInterval(run.tm);
+  let total=Date.now()-run.t0;if(run.lim)total=Math.min(total,run.lim*60000);
+  const ok=run.items.filter(p=>p.st==='ok'),avg=ok.length?ok.reduce((s,p)=>s+p.t,0)/ok.length:0;
+  $('#stats').innerHTML=
+    `<div class="stat"><b>${ok.length} из ${run.n}</b>решено верно</div>`+
+    `<div class="stat"><b>${tf(total)}</b>общее время</div>`+
+    `<div class="stat"><b>${ok.length?tf(avg):'—'}</b>среднее на решённый пример</div>`+
+    `<div class="stat"><b>${run.items.reduce((s,p)=>s+Math.max(0,p.att-(p.st==='ok'?1:0)),0)}</b>неверных попыток</div>`;
+  $('#list').innerHTML=run.items.map((p,i)=>{
+    const good=p.st==='ok',lab=good?'':p.st==='skip'?' · пропущен, ответ: '+af(p.v):' · не успел, ответ: '+af(p.v);
+    return`<div class="it"><b>${i+1}</b><span class="${good?'good':'bad'}">${good?'✓':'✗'}</span><span>${good?tf(p.t):''}${lab}</span></div>`;
+  }).join('');
+  screen('res');
+}
+$('#again').onclick=()=>{run=null;screen('setup')};
+</script>
+</body>
+</html>
